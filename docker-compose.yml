@@ -1,0 +1,60 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: banking-chatbot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: banking_chatbot
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chatbot-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: banking-chatbot-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@banking-chatbot.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_LISTEN_PORT: 5050
+    ports:
+      - "5050:5050"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - chatbot-network
+
+  admin-dashboard:
+    image: node:20-alpine
+    container_name: banking-chatbot-admin
+    working_dir: /app
+    volumes:
+      - ./frontend/admin-dashboard:/app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_SUPPORT_API_URL=http://localhost:8000/api/v1
+    networks:
+      - chatbot-network
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  chatbot-network:
+    driver: bridge
