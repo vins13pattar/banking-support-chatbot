@@ -11,10 +11,11 @@
 | Backend           | Python, LangGraph and LangChain           |
 | Architecture      | Multi-agent system                        |
 | Database          | PostgreSQL                                |
-| Frontend          | React.js                                  |
+| Chat UI           | Agent Chat UI (langchain-ai/agent-chat-ui)|
+| Admin Dashboard   | Vite + React + TypeScript                 |
 | Agent runtime     | LangGraph Agent Server                    |
 | Observability     | LangSmith                                 |
-| Deployment        | LangSmith Deployment                      |
+| Deployment        | Local (Docker Compose + langgraph dev/up) |
 | Interaction model | Streaming conversational interface        |
 | Human oversight   | Human-in-the-Loop approval and escalation |
 
@@ -68,9 +69,9 @@ The proposed system addresses these limitations through:
 2. Demonstrate agent-to-agent coordination using supervisor, handoff and shared-state patterns.
 3. Persist conversations and workflow state in PostgreSQL.
 4. Pause and resume workflows through Human-in-the-Loop interrupts.
-5. Provide a responsive React.js chat interface.
-6. Run the complete LangGraph application through a local Agent Server.
-7. Deploy the agent backend using LangSmith Deployment.
+5. Use Agent Chat UI (langchain-ai/agent-chat-ui) as the customer chat interface.
+6. Provide a custom React admin dashboard for approvals and support tickets.
+7. Run the complete LangGraph application through a local Agent Server.
 8. Trace agent executions, tool calls, latency and failures in LangSmith.
 9. Maintain an auditable history of sensitive customer-support actions.
 
@@ -89,7 +90,8 @@ The project should demonstrate:
 * Streaming responses
 * LangGraph Agent Server
 * LangSmith tracing, testing and deployment
-* React integration with an agent backend
+* Agent Chat UI integration with a LangGraph backend
+* Custom React dashboard for operational workflows
 
 ---
 
@@ -814,34 +816,57 @@ class RoutingDecision(BaseModel):
 
 ---
 
-## 15. React.js Frontend
+## 15. Frontend
 
-### 15.1 Customer Chat Interface
+The frontend consists of two applications:
 
-Required features:
+### 15.1 Customer Chat Interface — Agent Chat UI
+
+The customer chat interface uses [Agent Chat UI](https://github.com/langchain-ai/agent-chat-ui), the official LangChain open-source Next.js application for interacting with any LangGraph server via a chat interface.
+
+Agent Chat UI provides out of the box:
 
 * Start a new conversation
 * Resume an existing conversation
 * Send messages
 * Receive streamed responses
-* Display current processing state
-* Display the active support agent
-* Show tool activity using user-friendly labels
-* Present authentication prompts
-* Display pending human-review status
-* Display ticket and dispute reference numbers
-* Request human support
+* Display tool activity
+* Display pending human-review status (via interrupt events)
 * Handle connection and server errors
-* Preserve the thread ID in browser storage
+* Thread management
 
-### 15.2 Human Approval Dashboard
+Configuration:
+
+```text
+NEXT_PUBLIC_API_URL=http://localhost:2024
+NEXT_PUBLIC_ASSISTANT_ID=banking_support
+```
+
+Setup:
+
+```bash
+npx create-agent-chat-app
+# or
+git clone https://github.com/langchain-ai/agent-chat-ui.git
+cd agent-chat-ui
+pnpm install
+pnpm dev
+```
+
+The chat UI connects directly to the LangGraph Agent Server and does not require a custom backend API for chat operations.
+
+### 15.2 Admin Dashboard — Custom React Application
+
+A separate Vite + React + TypeScript application for support executives and administrators. This dashboard is not part of Agent Chat UI and must be built as a custom application.
+
+#### Human Approval Dashboard
 
 Required features:
 
 * List pending approval requests
 * Filter by risk, type and status
 * View customer request context
-* View the agent’s proposed action
+* View the agent's proposed action
 * View the relevant policy validation
 * Approve the action
 * Reject the action
@@ -850,7 +875,7 @@ Required features:
 * Resume the paused workflow
 * View completed approvals
 
-### 15.3 Support Ticket Dashboard
+#### Support Ticket Dashboard
 
 Required features:
 
@@ -861,39 +886,32 @@ Required features:
 * Update ticket status
 * View escalation reason
 
-### 15.4 Recommended UI Structure
+### 15.3 Recommended Admin Dashboard UI Structure
 
 ```text
-src/
-├── components/
-│   ├── chat/
-│   │   ├── ChatWindow.tsx
-│   │   ├── MessageBubble.tsx
-│   │   ├── ChatInput.tsx
-│   │   ├── AgentStatus.tsx
-│   │   └── ApprovalPending.tsx
-│   ├── approvals/
-│   │   ├── ApprovalList.tsx
-│   │   ├── ApprovalDetails.tsx
-│   │   └── ApprovalDecisionForm.tsx
-│   └── tickets/
-│       ├── TicketList.tsx
-│       └── TicketDetails.tsx
-├── pages/
-│   ├── CustomerChatPage.tsx
-│   ├── ApprovalsPage.tsx
-│   └── TicketsPage.tsx
-├── services/
-│   ├── langgraphClient.ts
-│   └── supportApi.ts
-├── hooks/
-│   ├── useChatThread.ts
-│   ├── useStreamingRun.ts
-│   └── useApprovals.ts
-└── types/
-    ├── chat.ts
-    ├── approvals.ts
-    └── tickets.ts
+admin-dashboard/
+├── src/
+│   ├── components/
+│   │   ├── approvals/
+│   │   │   ├── ApprovalList.tsx
+│   │   │   ├── ApprovalDetails.tsx
+│   │   │   └── ApprovalDecisionForm.tsx
+│   │   └── tickets/
+│   │       ├── TicketList.tsx
+│   │       └── TicketDetails.tsx
+│   ├── pages/
+│   │   ├── ApprovalsPage.tsx
+│   │   └── TicketsPage.tsx
+│   ├── services/
+│   │   └── supportApi.ts
+│   ├── hooks/
+│   │   └── useApprovals.ts
+│   └── types/
+│       ├── approvals.ts
+│       └── tickets.ts
+├── package.json
+├── vite.config.ts
+└── Dockerfile
 ```
 
 ---
@@ -931,9 +949,14 @@ banking-support-chatbot/
 │   ├── langgraph.json
 │   ├── pyproject.toml
 │   └── Dockerfile
-├── frontend/
+├── agent-chat-ui/          # Cloned from langchain-ai/agent-chat-ui
 │   ├── src/
 │   ├── package.json
+│   └── .env
+├── admin-dashboard/        # Custom Vite + React admin application
+│   ├── src/
+│   ├── package.json
+│   ├── vite.config.ts
 │   └── Dockerfile
 ├── database/
 │   └── seed/
@@ -1009,13 +1032,21 @@ Create a minimum of 40 evaluation examples covering:
 Docker Compose must run:
 
 * PostgreSQL
-* LangGraph backend
-* React frontend
+* LangGraph backend (via `langgraph up` or `langgraph dev`)
+* Admin dashboard
 * Optional database administration interface
 
-Development mode may run React and `langgraph dev` directly on the host while PostgreSQL runs in Docker.
+Development mode may run Agent Chat UI and `langgraph dev` directly on the host while PostgreSQL runs in Docker.
 
-### 18.2 LangSmith Deployment
+Agent Chat UI runs separately on the host during development:
+
+```bash
+cd agent-chat-ui
+pnpm dev
+# Available at http://localhost:3000
+```
+
+### 18.2 LangGraph Server Configuration
 
 The backend repository must include:
 
@@ -1024,32 +1055,30 @@ The backend repository must include:
 * Dependency configuration
 * Environment-variable definitions
 * Health checks
-* Database migration strategy
-* Seed-data strategy for the demo environment
 
-LangSmith Deployment supports deploying a LangGraph Agent Server through the LangGraph CLI. Managed deployments use PostgreSQL-backed persistence for server and checkpoint data by default.
-
-Example deployment flow:
+Local server modes:
 
 ```bash
+# Development server with reload
 langgraph dev
+
+# Production-like local container setup
 langgraph up
-langgraph deploy
 ```
 
-### 18.3 Frontend Deployment
+### 18.3 Admin Dashboard
 
-The React application is not deployed inside LangSmith.
-
-It must be deployed separately to a static or Node-compatible hosting platform and configured with:
+The admin dashboard runs on a separate port and is configured with:
 
 ```text
-VITE_LANGGRAPH_API_URL
-VITE_SUPPORT_API_URL
-VITE_APP_ENV
+VITE_LANGGRAPH_API_URL=http://localhost:2024
+VITE_SUPPORT_API_URL=http://localhost:8000
+VITE_APP_ENV=development
 ```
 
-The deployed backend must restrict allowed frontend origins through CORS configuration.
+The backend must restrict allowed frontend origins through CORS configuration.
+
+Note: Cloud deployment (LangSmith Deployment, Vercel, etc.) is deferred to a future phase.
 
 ---
 
@@ -1195,15 +1224,14 @@ The project will be considered complete when:
 6. Conversation checkpoints are persisted in PostgreSQL.
 7. A conversation can resume after a backend restart.
 8. At least two sensitive actions trigger a LangGraph interrupt.
-9. A reviewer can approve or reject an action from the React dashboard.
+9. A reviewer can approve or reject an action from the admin dashboard.
 10. The same graph thread resumes after the decision.
 11. Approved actions execute only once.
 12. Rejected actions are not executed.
 13. Support tickets and approval decisions are stored in PostgreSQL.
-14. Customer responses are streamed to the React interface.
+14. Customer responses are streamed via Agent Chat UI.
 15. Complete graph traces are visible in LangSmith.
 16. The LangGraph backend runs through the local Agent Server.
-17. The backend is deployed successfully through LangSmith Deployment.
 18. Automated tests cover the primary routing and HITL workflows.
 19. No real banking credentials, customer information or transactions are used.
 20. The repository includes setup instructions and seeded demonstration data.
@@ -1241,24 +1269,21 @@ The project will be considered complete when:
 * Graph resume flow
 * Audit logging
 
-### Milestone 4: React Application
+### Milestone 4: Frontend Applications
 
-* Customer chat
-* Streaming responses
-* Conversation history
-* Authentication interaction
+* Agent Chat UI setup and configuration
+* Agent Chat UI integration with LangGraph Agent Server
+* Custom admin dashboard (Vite + React + TypeScript)
 * Approval dashboard
 * Ticket dashboard
 * Error handling
 
-### Milestone 5: Quality and Deployment
+### Milestone 5: Quality and Local Testing
 
 * Security tests
 * LangSmith evaluation dataset
 * Prompt and graph evaluation
-* Production-like local testing
-* LangSmith Deployment
-* Frontend deployment
+* Production-like local testing (`langgraph up` + Docker Compose)
 * Documentation and demonstration script
 
 ---
