@@ -33,19 +33,15 @@ Edit `.env` and add your `OPENAI_API_KEY` and `LANGSMITH_API_KEY`.
 
 ### 2. Infrastructure & Database
 
-Start the PostgreSQL database and Admin Dashboard via Docker Compose:
-```bash
-docker-compose up -d
-```
-
-### 3. Backend Setup
-
-Initialize the Python environment and database:
+Initialize the Python environment and run the database migrations and seed scripts:
 ```bash
 cd backend
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e .
+
+# Start ONLY the postgres database first
+docker-compose up -d postgres
 
 # Run Alembic migrations to create tables
 alembic upgrade head
@@ -54,7 +50,7 @@ alembic upgrade head
 python src/database/run_seed.py
 ```
 
-### 4. Start the Agent Server
+### 3. Start the Agent Server
 
 Run the LangGraph Agent Server in development mode:
 ```bash
@@ -63,25 +59,20 @@ langgraph dev
 ```
 The agent server will start at `http://localhost:2024`.
 
-### 5. Start the FastAPI Backend
+### 4. Start the Full Application Stack
 
-In a new terminal window:
+Once the database is seeded and the LangGraph server is running, you can start the rest of the application stack (FastAPI Backend, Admin Dashboard, and Customer Chat) using Docker Compose:
+
 ```bash
-cd backend
-source .venv/bin/activate
-python src/main.py
+# From the project root directory
+docker-compose up -d
 ```
-The API will start at `http://localhost:8000`.
 
-### 6. Customer Chat UI
-
-In a new terminal window:
-```bash
-cd frontend/customer-chat
-npm install
-npm run dev
-```
-Access the chat UI at `http://localhost:3000`.
+This will spin up:
+- **FastAPI Backend** on `http://localhost:8000`
+- **Admin Dashboard** on `http://localhost:5173`
+- **Customer Chat UI** on `http://localhost:3000`
+- **pgAdmin** on `http://localhost:5050`
 
 ## Testing the System 🧪
 
