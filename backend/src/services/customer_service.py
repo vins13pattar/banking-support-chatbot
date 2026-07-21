@@ -1,7 +1,6 @@
 """Customer service for looking up and verifying customers."""
 
-from sqlalchemy import select
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from src.database import engine
 from src.models.customer import Customer

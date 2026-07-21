@@ -1,8 +1,8 @@
 """Transaction service for querying and analyzing transactions."""
 
 from typing import Any
-from sqlalchemy import select, desc
-from sqlmodel import Session
+from sqlalchemy import desc
+from sqlmodel import Session, select
 
 from src.database import engine
 from src.models.transaction import Transaction

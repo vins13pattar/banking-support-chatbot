@@ -1,7 +1,6 @@
 """Account service for retrieving account details and balances."""
 
-from sqlalchemy import select
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from src.database import engine
 from src.models.account import Account

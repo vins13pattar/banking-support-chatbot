@@ -1,7 +1,7 @@
 """Knowledge service for retrieving FAQ and policy documents."""
 
-from sqlalchemy import select, or_
-from sqlmodel import Session
+from sqlalchemy import or_
+from sqlmodel import Session, select
 
 from src.database import engine
 from src.models.knowledge_document import KnowledgeDocument
