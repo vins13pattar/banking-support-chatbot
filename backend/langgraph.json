@@ -3,5 +3,5 @@
   "graphs": {
     "banking_support": "./src/graphs/main_graph.py:graph"
   },
-  "env": ".env"
+  "env": "../.env"
 }
