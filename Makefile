@@ -5,7 +5,7 @@ start:
 	@echo "Starting Docker Compose services (Postgres, FastAPI, Admin Dashboard, Customer Chat)..."
 	docker-compose up -d
 	@echo "Starting LangGraph Agent Server in development mode..."
-	cd backend && . .venv/bin/activate && langgraph dev --tunnel
+	cd backend && . .venv/bin/activate && langgraph dev
 
 # Stop all services
 stop:
