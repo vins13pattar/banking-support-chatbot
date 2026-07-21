@@ -1,17 +1,32 @@
 """Knowledge service for retrieving FAQ and policy documents."""
 
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlmodel import Session
 
 from src.database import engine
 from src.models.knowledge_document import KnowledgeDocument
+
+# Common stop words to skip during keyword search
+_STOP_WORDS = frozenset({
+    "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+    "have", "has", "had", "do", "does", "did", "will", "would", "shall",
+    "should", "may", "might", "must", "can", "could", "to", "of", "in",
+    "for", "on", "with", "at", "by", "from", "as", "into", "about",
+    "like", "through", "after", "before", "between", "out", "above",
+    "below", "up", "down", "and", "but", "or", "not", "no", "nor",
+    "so", "yet", "both", "each", "few", "more", "most", "other", "some",
+    "such", "than", "too", "very", "just", "also", "how", "what", "when",
+    "where", "which", "who", "whom", "why", "this", "that", "these",
+    "those", "i", "me", "my", "we", "our", "you", "your", "he", "him",
+    "his", "she", "her", "it", "its", "they", "them", "their",
+})
 
 
 def search_knowledge_base(query: str, category: str | None = None) -> list[dict[str, str]]:
     """Search the knowledge base for relevant documents.
     
     In a real app, this would use vector search (e.g. pgvector or pinecone).
-    For this prototype, we'll do a simple ILIKE search.
+    For this prototype, we do a simple ILIKE search with OR logic.
     """
     with Session(engine) as session:
         statement = select(KnowledgeDocument).where(KnowledgeDocument.active == True)
@@ -19,35 +34,22 @@ def search_knowledge_base(query: str, category: str | None = None) -> list[dict[
         if category:
             statement = statement.where(KnowledgeDocument.category == category)
             
-        # Basic keyword search on title or content
-        keywords = query.split()
-        for kw in keywords:
-            if len(kw) > 3:  # skip small words
-                statement = statement.where(
-                    (KnowledgeDocument.title.ilike(f"%{kw}%")) |
-                    (KnowledgeDocument.content.ilike(f"%{kw}%"))
-                )
-                
-        # If no keywords matched, or query was empty, return some top documents
-        statement = statement.limit(5)
+        # Extract meaningful keywords (skip short words and stop words)
+        keywords = [
+            kw for kw in query.lower().split()
+            if len(kw) > 2 and kw not in _STOP_WORDS
+        ]
         
-        results = session.exec(statement).all()
-        
-        # If still no results and we had keywords, do a broader search
-        if not results and keywords:
-            broad_stmt = select(KnowledgeDocument).where(KnowledgeDocument.active == True)
-            if category:
-                broad_stmt = broad_stmt.where(KnowledgeDocument.category == category)
-            # Match any word
+        if keywords:
+            # Use OR logic: match any keyword in title or content
+            keyword_conditions = []
             for kw in keywords:
-                if len(kw) > 3:
-                     broad_stmt = broad_stmt.where(
-                        (KnowledgeDocument.title.ilike(f"%{kw}%")) |
-                        (KnowledgeDocument.content.ilike(f"%{kw}%"))
-                    )
-                     break # just need one match
-            broad_stmt = broad_stmt.limit(3)
-            results = session.exec(broad_stmt).all()
+                keyword_conditions.append(KnowledgeDocument.title.ilike(f"%{kw}%"))
+                keyword_conditions.append(KnowledgeDocument.content.ilike(f"%{kw}%"))
+            statement = statement.where(or_(*keyword_conditions))
+                
+        statement = statement.limit(5)
+        results = session.exec(statement).all()
 
         return [
             {

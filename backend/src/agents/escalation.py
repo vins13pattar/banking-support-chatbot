@@ -1,6 +1,6 @@
 """Escalation node."""
 
-from src.tools.support_tools import create_support_ticket
+from src.services.ticket_service import create_support_ticket
 
 
 async def escalation_node(state: dict) -> dict:

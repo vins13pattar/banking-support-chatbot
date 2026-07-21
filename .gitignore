@@ -43,3 +43,4 @@ backend/migrations/versions/*.pyc
 
 # LangGraph
 .langgraph/
+backend/.langgraph_api/
