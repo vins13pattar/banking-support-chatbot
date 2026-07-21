@@ -32,8 +32,10 @@ async def compliance_node(state: dict) -> dict:
     
     proposed_action = state.get("proposed_action")
     if not proposed_action:
-        # Should not reach here without a proposed action, but if it does, go back to supervisor
-        return {"active_agent": None}
+        return {
+            "messages": [AIMessage(content="I understand you would like to handle a dispute or high-risk request. Let me assist you with that.")],
+            "active_agent": None
+        }
         
     system_message = COMPLIANCE_PROMPT.format(
         action_type=proposed_action.get("action_type"),

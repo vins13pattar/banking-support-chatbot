@@ -118,7 +118,7 @@ workflow.add_conditional_edges("transaction", route_after_agent)
 workflow.add_conditional_edges("card", route_after_agent)
 
 # These route back to supervisor when they set active_agent, otherwise END
-workflow.add_edge("compliance", "supervisor")
+workflow.add_conditional_edges("compliance", route_after_agent)
 workflow.add_conditional_edges("human_approval", route_after_agent)
 workflow.add_conditional_edges("action_executor", route_after_agent)
 workflow.add_conditional_edges("escalation", route_after_agent)

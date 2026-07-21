@@ -17,9 +17,9 @@ Available Agents:
 - faq: General banking questions, policy inquiries, bank hours, rates.
 - authentication: Verification of customer identity (DOB, phone).
 - account: Account balances, account status, types of accounts.
-- transaction: Recent transactions, transaction search, declined transactions.
+- transaction: Recent transactions, transaction search, declined transactions, disputing transactions, or creating support tickets for transactions.
 - card: Card management (blocking, unblocking, replacing). (Use 'card' for lost card).
-- compliance: Handles ALL disputes, chargebacks, and high-risk operations.
+- compliance: Evaluates risk ONLY for ALREADY PROPOSED sensitive actions (like blocking a card, replacing a card, or executing a high-risk dispute). Do NOT route general user requests directly to compliance unless an action was already proposed.
 - response: Used ONLY when you want to respond directly without routing, e.g. casual greetings or thanking the user.
 
 Authentication Rules:
