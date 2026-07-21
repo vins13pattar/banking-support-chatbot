@@ -34,7 +34,7 @@ def get_card_agent(customer_id: str | None):
             propose_block_card_tool,
             propose_replace_card_tool
         ],
-        state_modifier=SystemMessage(content=prompt)
+        prompt=SystemMessage(content=prompt)
     )
 
 async def card_node(state: dict) -> dict:

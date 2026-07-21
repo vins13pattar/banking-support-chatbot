@@ -21,7 +21,7 @@ Be polite, concise, and helpful.
 faq_agent = create_react_agent(
     model=llm,
     tools=[search_banking_knowledge_tool, get_policy_document_tool],
-    state_modifier=SystemMessage(content=FAQ_PROMPT)
+    prompt=SystemMessage(content=FAQ_PROMPT)
 )
 
 async def faq_node(state: dict) -> dict:

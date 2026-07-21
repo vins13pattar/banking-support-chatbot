@@ -42,7 +42,7 @@ def get_transaction_agent(customer_id: str | None, thread_id: str):
             get_transaction_details_tool,
             create_support_ticket_tool
         ],
-        state_modifier=SystemMessage(content=prompt)
+        prompt=SystemMessage(content=prompt)
     )
 
 async def transaction_node(state: dict) -> dict:

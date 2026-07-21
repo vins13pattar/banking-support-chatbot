@@ -27,7 +27,7 @@ def get_account_agent(customer_id: str | None):
     return create_react_agent(
         model=llm,
         tools=[get_customer_accounts_tool, get_account_balance_tool],
-        state_modifier=SystemMessage(content=prompt)
+        prompt=SystemMessage(content=prompt)
     )
 
 async def account_node(state: dict) -> dict:

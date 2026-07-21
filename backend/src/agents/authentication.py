@@ -28,7 +28,7 @@ If verification fails, inform the user and ask them to try again.
 auth_agent = create_react_agent(
     model=llm,
     tools=[verify_customer_tool],
-    state_modifier=SystemMessage(content=AUTH_PROMPT)
+    prompt=SystemMessage(content=AUTH_PROMPT)
 )
 
 async def authentication_node(state: dict) -> dict:
