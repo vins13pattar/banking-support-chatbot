@@ -42,6 +42,9 @@ async def card_node(state: dict) -> dict:
     agent = get_card_agent(state.get("customer_id"))
     result = await agent.ainvoke(state)
     
+    original_message_count = len(state.get("messages", []))
+    new_messages = result["messages"][original_message_count:]
+    
     # Check if a proposed action was generated
     proposed_action = state.get("proposed_action")
     active_agent = None
@@ -59,7 +62,7 @@ async def card_node(state: dict) -> dict:
             break
             
     return {
-        "messages": result["messages"][-1:],
+        "messages": new_messages,
         "proposed_action": proposed_action,
         "active_agent": active_agent
     }
