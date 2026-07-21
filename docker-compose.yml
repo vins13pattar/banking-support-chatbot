@@ -24,7 +24,7 @@ services:
     container_name: banking-chatbot-pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@banking-chatbot.local
+      PGADMIN_DEFAULT_EMAIL: admin@bankingchatbot.com
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_LISTEN_PORT: 5050
     ports:
