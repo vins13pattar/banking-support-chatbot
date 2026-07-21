@@ -47,32 +47,24 @@ docker-compose up -d postgres
 alembic upgrade head
 
 # Seed the database with mock data
-python src/database/run_seed.py
-```
+### 3. Start All Services
 
-### 3. Start the Agent Server
-
-Run the LangGraph Agent Server in development mode:
-```bash
-# From the backend directory
-langgraph dev
-```
-The agent server will start at `http://localhost:2024`.
-
-### 4. Start the Full Application Stack
-
-Once the database is seeded and the LangGraph server is running, you can start the rest of the application stack (FastAPI Backend, Admin Dashboard, and Customer Chat) using Docker Compose:
+You can start the entire application stack (FastAPI Backend, Admin Dashboard, Customer Chat, and LangGraph Agent Server) with a single command:
 
 ```bash
 # From the project root directory
-docker-compose up -d
+make start
 ```
 
-This will spin up:
-- **FastAPI Backend** on `http://localhost:8000`
-- **Admin Dashboard** on `http://localhost:5173`
-- **Customer Chat UI** on `http://localhost:3000`
-- **pgAdmin** on `http://localhost:5050`
+This will run `docker-compose up -d` for the standard services and then run `langgraph dev` in your terminal.
+You will see the LangGraph logs in your terminal. To stop the LangGraph server, press `Ctrl+C`.
+
+The services will be available at:
+- **LangGraph Server**: `http://localhost:2024`
+- **FastAPI Backend**: `http://localhost:8000`
+- **Admin Dashboard**: `http://localhost:5173`
+- **Customer Chat UI**: `http://localhost:3000`
+- **pgAdmin**: `http://localhost:5050`
 
 ## Testing the System 🧪
 
