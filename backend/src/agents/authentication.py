@@ -55,8 +55,11 @@ async def authentication_node(state: dict) -> dict:
                 pass
             break
 
+    original_message_count = len(state.get("messages", []))
+    new_messages = result["messages"][original_message_count:]
+
     return {
-        "messages": result["messages"][-1:],  # Return only the new messages
+        "messages": new_messages,
         "customer_verified": customer_verified,
         "customer_id": customer_id,
         "active_agent": None  # reset to none to go back to supervisor on next turn

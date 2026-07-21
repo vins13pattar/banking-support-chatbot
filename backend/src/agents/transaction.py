@@ -49,7 +49,11 @@ async def transaction_node(state: dict) -> dict:
     """Run the Transaction agent."""
     agent = get_transaction_agent(state.get("customer_id"), state.get("thread_id"))
     result = await agent.ainvoke(state)
+    
+    original_message_count = len(state.get("messages", []))
+    new_messages = result["messages"][original_message_count:]
+    
     return {
-        "messages": result["messages"][-1:],
-        "active_agent": None 
+        "messages": new_messages,
+        "active_agent": None
     }

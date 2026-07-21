@@ -21,26 +21,52 @@ def route_from_supervisor(state: BankingSupportState) -> str:
     agent = state.get("active_agent")
     if not agent:
         return END
-        
+
     if agent == "response":
         return "response"
-        
+
     if agent == "escalation":
         return "escalation"
-        
+
     if agent == "human_approval":
         return "human_approval"
-        
+
     if agent == "action_executor":
         return "action_executor"
-        
+
     if agent == "compliance":
         return "compliance"
-        
+
     valid_agents = ["authentication", "faq", "account", "transaction", "card"]
     if agent in valid_agents:
         return agent
-        
+
+    return END
+
+
+def route_after_agent(state: BankingSupportState) -> str:
+    """Route after an agent node completes.
+
+    If the agent set active_agent to a specific next node (e.g. card -> compliance),
+    route to supervisor to handle it. Otherwise, the agent is done and
+    waiting for user input, so route to END.
+    """
+    next_agent = state.get("active_agent")
+    if next_agent:
+        # Agent wants to hand off to another agent (e.g. card -> compliance)
+        return "supervisor"
+    # Agent is done; wait for the next user message
+    return END
+
+
+def route_after_authentication(state: BankingSupportState) -> str:
+    """Route after authentication completes.
+
+    If the user was successfully verified, go back to supervisor so it can
+    route to the appropriate domain agent. Otherwise, end and wait for user input.
+    """
+    if state.get("customer_verified", False):
+        return "supervisor"
     return END
 
 
@@ -82,12 +108,16 @@ workflow.add_conditional_edges(
     }
 )
 
-# Return to supervisor
-workflow.add_edge("authentication", "supervisor")
-workflow.add_edge("faq", "supervisor")
-workflow.add_edge("account", "supervisor")
-workflow.add_edge("transaction", "supervisor")
-workflow.add_edge("card", "supervisor")
+# Authentication: go back to supervisor only if verified, otherwise END (wait for user)
+workflow.add_conditional_edges("authentication", route_after_authentication)
+
+# Domain agents: END to wait for user input, unless they set active_agent for handoff
+workflow.add_conditional_edges("faq", route_after_agent)
+workflow.add_conditional_edges("account", route_after_agent)
+workflow.add_conditional_edges("transaction", route_after_agent)
+workflow.add_conditional_edges("card", route_after_agent)
+
+# These always route back to supervisor for next decision
 workflow.add_edge("compliance", "supervisor")
 workflow.add_edge("human_approval", "supervisor")
 workflow.add_edge("action_executor", "supervisor")

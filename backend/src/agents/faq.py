@@ -27,7 +27,9 @@ faq_agent = create_react_agent(
 async def faq_node(state: dict) -> dict:
     """Run the FAQ agent."""
     result = await faq_agent.ainvoke(state)
+    original_message_count = len(state["messages"])
+    new_messages = result["messages"][original_message_count:]
     return {
-        "messages": result["messages"][-1:],
+        "messages": new_messages,
         "active_agent": None # reset routing
     }
