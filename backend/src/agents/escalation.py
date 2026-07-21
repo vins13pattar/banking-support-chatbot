@@ -24,9 +24,10 @@ async def escalation_node(state: dict) -> dict:
     message = f"I have escalated your request to a human agent. Your ticket reference number is {ticket_id}. Our team will review this shortly."
     
     from langchain_core.messages import AIMessage
-    
+
+    # Route through the Response Agent (per PRD §10 flowchart: EscalationNode -> ResponseAgent)
     return {
         "messages": [AIMessage(content=message)],
         "escalation_required": False,  # Reset flag as it's been handled
-        "active_agent": None
+        "active_agent": "response"
     }

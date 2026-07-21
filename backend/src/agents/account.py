@@ -5,7 +5,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 
 from src.config import settings
-from src.tools.account_tools import get_customer_accounts_tool, get_account_balance_tool
+from src.tools.account_tools import make_account_tools
 
 llm = ChatOpenAI(model=settings.llm_model, temperature=0)
 
@@ -19,15 +19,13 @@ You have access to:
 Important Rules:
 1. Always verify the customer's intent. If they have multiple accounts, specify which account balance you are returning (using the masked account number).
 2. If an account is 'frozen' or 'dormant', inform the user politely and recommend they speak to a branch representative or raise a support ticket.
-3. You must provide the customer_id to your tools. The customer_id is: {customer_id}
 """
 
 def get_account_agent(customer_id: str | None):
-    prompt = ACCOUNT_PROMPT.format(customer_id=customer_id or "UNKNOWN (Error: User must be authenticated)")
     return create_react_agent(
         model=llm,
-        tools=[get_customer_accounts_tool, get_account_balance_tool],
-        prompt=SystemMessage(content=prompt)
+        tools=make_account_tools(customer_id),
+        prompt=SystemMessage(content=ACCOUNT_PROMPT)
     )
 
 async def account_node(state: dict) -> dict:

@@ -12,7 +12,10 @@ class SupportTicket(SQLModel, table=True):
     __tablename__ = "support_tickets"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    customer_id: uuid.UUID = Field(index=True, foreign_key="customers.id")
+    # Nullable: a customer can request escalation (e.g. after repeated
+    # authentication failures, per PRD §7.7) before ever being verified,
+    # so there may be no customer record to link yet.
+    customer_id: uuid.UUID | None = Field(default=None, index=True, foreign_key="customers.id")
     thread_id: str = Field(index=True, max_length=100)
     category: str = Field(max_length=50)  # dispute, card_issue, escalation, general
     description: str = Field(default="")

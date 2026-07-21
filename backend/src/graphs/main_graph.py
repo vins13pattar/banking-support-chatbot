@@ -3,7 +3,7 @@
 from langgraph.graph import StateGraph, START, END
 
 from src.graphs.state import BankingSupportState
-from src.agents.supervisor import supervisor_node
+from src.agents.supervisor import supervisor_node, PROTECTED_AGENTS
 from src.agents.authentication import authentication_node
 from src.agents.faq import faq_node
 from src.agents.account import account_node
@@ -21,6 +21,13 @@ def route_from_supervisor(state: BankingSupportState) -> str:
     agent = state.get("active_agent")
     if not agent:
         return END
+
+    # Defense in depth: enforce the verification gate at the graph-edge
+    # level too, independent of supervisor_node's own check. Per PRD §9.4,
+    # deterministic graph conditions must enforce security, not just the
+    # LLM-driven node logic upstream.
+    if agent in PROTECTED_AGENTS and not state.get("customer_verified", False):
+        return "authentication"
 
     if agent == "response":
         return "response"
@@ -44,17 +51,36 @@ def route_from_supervisor(state: BankingSupportState) -> str:
     return END
 
 
+DETERMINISTIC_HANDOFF_TARGETS = {
+    "compliance",
+    "human_approval",
+    "action_executor",
+    "escalation",
+    "response",
+}
+
+
 def route_after_agent(state: BankingSupportState) -> str:
     """Route after an agent node completes.
 
-    If the agent set active_agent to a specific next node (e.g. card -> compliance),
-    route to supervisor to handle it. Otherwise, the agent is done and
-    waiting for user input, so route to END.
+    If the agent set active_agent to a specific deterministic next node
+    (e.g. card -> compliance, compliance -> human_approval, human_approval ->
+    action_executor), route DIRECTLY to that node.
+
+    This must NOT bounce back through the supervisor: the supervisor node
+    re-derives active_agent from an LLM call constrained to the
+    RoutingDecision schema, which does not even include "human_approval" or
+    "action_executor" as valid targets. Routing these deterministic,
+    already-decided handoffs back through supervisor would silently drop
+    them (the LLM would overwrite active_agent with an unrelated agent),
+    breaking the entire HITL approval pipeline. Deterministic handoffs must
+    be enforced by graph edges, not re-interpreted by an LLM.
+
+    Otherwise, the agent is done and waiting for user input, so route to END.
     """
     next_agent = state.get("active_agent")
-    if next_agent:
-        # Agent wants to hand off to another agent (e.g. card -> compliance)
-        return "supervisor"
+    if next_agent in DETERMINISTIC_HANDOFF_TARGETS:
+        return next_agent
     # Agent is done; wait for the next user message
     return END
 
@@ -117,7 +143,7 @@ workflow.add_conditional_edges("account", route_after_agent)
 workflow.add_conditional_edges("transaction", route_after_agent)
 workflow.add_conditional_edges("card", route_after_agent)
 
-# These route back to supervisor when they set active_agent, otherwise END
+# These route directly to their deterministic next node, otherwise END
 workflow.add_conditional_edges("compliance", route_after_agent)
 workflow.add_conditional_edges("human_approval", route_after_agent)
 workflow.add_conditional_edges("action_executor", route_after_agent)

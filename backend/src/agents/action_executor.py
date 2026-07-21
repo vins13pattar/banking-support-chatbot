@@ -54,11 +54,12 @@ async def action_executor_node(state: dict) -> dict:
     )
     
     message = f"Action Execution Result: {execution_result['message']}"
-    
-    # Go back to the supervisor (or directly to response agent) to inform the user
+
+    # Route through the Response Agent (per PRD §10 flowchart: ActionExecutor -> ResponseAgent)
+    # so the raw execution result is reviewed for safety/masking before reaching the customer.
     return {
         "messages": [AIMessage(content=message)],
         "proposed_action": None, # Clear it out so we don't re-execute
         "approval_status": None,
-        "active_agent": None 
+        "active_agent": "response"
     }

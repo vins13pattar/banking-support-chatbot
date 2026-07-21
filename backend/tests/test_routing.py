@@ -4,7 +4,29 @@ import pytest
 from langchain_core.messages import HumanMessage
 
 from src.graphs.state import BankingSupportState
-from src.graphs.main_graph import route_from_supervisor
+from src.graphs.main_graph import route_from_supervisor, route_after_agent
+
+
+def _make_state(**overrides) -> BankingSupportState:
+    base = dict(
+        messages=[HumanMessage(content="hi")],
+        thread_id="test_thread",
+        customer_id="uuid-1234",
+        customer_verified=True,
+        intent=None,
+        active_agent=None,
+        account_context=None,
+        transaction_context=None,
+        proposed_action=None,
+        risk_level="low",
+        approval_status=None,
+        escalation_required=False,
+        escalation_reason=None,
+        final_response=None,
+        error_context=[],
+    )
+    base.update(overrides)
+    return BankingSupportState(**base)
 
 
 def test_route_from_supervisor_unauthenticated():
@@ -57,7 +79,13 @@ def test_route_from_supervisor_authenticated():
 
 
 def test_route_from_supervisor_response():
-    """Test routing when supervisor decides to respond directly."""
+    """Test routing when supervisor decides to respond directly.
+
+    active_agent="response" should route to the "response" node itself
+    (which formats/safety-checks the final reply before its own separate
+    edge to END) -- not straight to END, which would skip that node
+    entirely.
+    """
     state = BankingSupportState(
         messages=[HumanMessage(content="Hello")],
         thread_id="test_thread",
@@ -75,7 +103,42 @@ def test_route_from_supervisor_response():
         final_response=None,
         error_context=[]
     )
-    
+
     route = route_from_supervisor(state)
+    assert route == "response"
+
+
+@pytest.mark.parametrize(
+    "next_agent,expected",
+    [
+        ("compliance", "compliance"),
+        ("human_approval", "human_approval"),
+        ("action_executor", "action_executor"),
+        ("escalation", "escalation"),
+        ("response", "response"),
+    ],
+)
+def test_route_after_agent_goes_direct_not_through_supervisor(next_agent, expected):
+    """Regression test: a deterministic handoff (e.g. card -> compliance,
+    compliance -> human_approval, human_approval -> action_executor) must
+    route DIRECTLY to its target node.
+
+    It must never route back to "supervisor": supervisor_node re-derives
+    active_agent via an LLM call constrained to RoutingDecision, whose
+    Literal options don't even include "human_approval" or
+    "action_executor". Bouncing through supervisor would silently
+    overwrite the intended handoff and the graph could never actually
+    reach the human-approval interrupt.
+    """
+    state = _make_state(active_agent=next_agent)
+    route = route_after_agent(state)
+    assert route == expected
+    assert route != "supervisor"
+
+
+def test_route_after_agent_ends_when_no_handoff():
+    """When an agent finishes without proposing a handoff, wait for the user."""
     from langgraph.graph import END
-    assert route == END
+
+    state = _make_state(active_agent=None)
+    assert route_after_agent(state) == END

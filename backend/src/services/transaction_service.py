@@ -82,12 +82,28 @@ def search_transactions(customer_id: str, merchant_query: str | None = None, sta
         ]
 
 
-def get_transaction_details(transaction_reference: str) -> dict[str, Any] | None:
-    """Get details of a specific transaction by reference."""
+def get_transaction_details(transaction_reference: str, customer_id: str) -> dict[str, Any] | None:
+    """Get details of a specific transaction by reference.
+
+    Requires customer_id and verifies the transaction belongs to one of the
+    customer's own accounts. Per PRD §13.7 ("Customer and thread ownership
+    must be verified in application code") and §19.3 ("Reveal another
+    customer's transactions" is an explicit attack to defend against):
+    without this check, any authenticated customer could look up any other
+    customer's transaction by reference alone.
+    """
     with Session(engine) as session:
-        statement = select(Transaction).where(Transaction.transaction_reference == transaction_reference)
+        accounts = get_customer_accounts(customer_id)
+        account_ids = [acc.id for acc in accounts]
+        if not account_ids:
+            return None
+
+        statement = select(Transaction).where(
+            Transaction.transaction_reference == transaction_reference,
+            Transaction.account_id.in_(account_ids),
+        )
         txn = session.exec(statement).first()
-        
+
         if txn:
             return {
                 "transaction_reference": txn.transaction_reference,

@@ -40,6 +40,58 @@ class LangGraphClient:
 lg_client = LangGraphClient()
 
 
+def get_or_create_pending_approval(
+    thread_id: str,
+    customer_id: str | None,
+    action_type: str,
+    action_summary: str,
+    proposed_payload: dict,
+    risk_level: str,
+):
+    """Get the existing pending approval for this thread, or persist a new one.
+
+    This MUST be called whenever the graph interrupts for human review.
+    Without a persisted row here, `get_pending_approvals` and
+    `submit_approval_decision` (both of which query this table) have
+    nothing to find, so the admin dashboard's pending-approvals list would
+    always be empty and reviewers would have no way to discover or act on
+    the request.
+
+    Get-or-create (rather than always inserting) matters because of how
+    LangGraph interrupts work: when a node calls `interrupt()`, the whole
+    node function re-runs from the top on resume, so any code before the
+    `interrupt()` call executes again. Without this check, resuming a
+    thread would insert a second, duplicate "pending" row every time.
+    """
+    from sqlmodel import Session, select
+    from src.database import engine
+    from src.models.approval_request import ApprovalRequest
+
+    with Session(engine) as session:
+        existing = session.exec(
+            select(ApprovalRequest).where(
+                ApprovalRequest.thread_id == thread_id,
+                ApprovalRequest.status == "pending",
+            )
+        ).first()
+        if existing:
+            return existing
+
+        record = ApprovalRequest(
+            thread_id=thread_id,
+            customer_id=customer_id,
+            action_type=action_type,
+            action_summary=action_summary,
+            proposed_payload=proposed_payload,
+            risk_level=risk_level,
+            status="pending",
+        )
+        session.add(record)
+        session.commit()
+        session.refresh(record)
+        return record
+
+
 async def get_pending_approvals() -> list[dict]:
     """Get all pending approvals.
     
