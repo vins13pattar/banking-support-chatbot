@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """
 
     # --- Database ---
-    database_url: str = "postgresql://postgres:postgres@localhost:5432/banking_chatbot"
+    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/banking_chatbot"
 
     # --- LLM ---
     openai_api_key: str = ""

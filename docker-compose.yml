@@ -61,7 +61,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/banking_chatbot
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/banking_chatbot
     depends_on:
       postgres:
         condition: service_healthy
