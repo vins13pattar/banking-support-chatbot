@@ -33,7 +33,7 @@ async def human_approval_node(state: dict) -> dict:
 
     # Persist the pending approval so the admin dashboard can list and act on
     # it (get_or_create is idempotent across the node's re-run-on-resume).
-    record = get_or_create_pending_approval(
+    record, created = get_or_create_pending_approval(
         thread_id=state.get("thread_id"),
         customer_id=state.get("customer_id"),
         action_type=proposed_action.get("action_type"),
@@ -45,21 +45,20 @@ async def human_approval_node(state: dict) -> dict:
     # Format the request to send to the UI
     approval_request = create_approval_request(state, approval_id=str(record.id))
 
-    # Notify user that we are waiting for human approval
-    # Note: In a real app we might not send this to the LLM context directly,
-    # but we'll add it to messages so the UI can show it to the user.
-    # Actually, it's better if the frontend handles the "waiting" state visually,
-    # but we can return a message.
+    # Only log the request once, on the pass that actually created it: this
+    # node re-runs from the top on every resume (same replay hazard
+    # get_or_create_pending_approval handles for the DB row), so logging
+    # unconditionally here would write a duplicate "approval_requested"
+    # audit event on every resume.
+    if created:
+        log_audit_event(
+            thread_id=state.get("thread_id"),
+            actor_type="system",
+            actor_id="compliance_agent",
+            event_type="approval_requested",
+            event_payload=approval_request
+        )
 
-    # Log that approval was requested
-    log_audit_event(
-        thread_id=state.get("thread_id"),
-        actor_type="system",
-        actor_id="compliance_agent",
-        event_type="approval_requested",
-        event_payload=approval_request
-    )
-    
     # Suspend execution here!
     # The graph will wait until resumed with a decision payload
     # Expected resume payload matches ApprovalDecision schema

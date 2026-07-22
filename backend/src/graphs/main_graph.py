@@ -16,41 +16,6 @@ from src.agents.response import response_node
 from src.agents.escalation import escalation_node
 
 
-def route_from_supervisor(state: BankingSupportState) -> str:
-    """Route to the appropriate agent based on the supervisor's decision."""
-    agent = state.get("active_agent")
-    if not agent:
-        return END
-
-    # Defense in depth: enforce the verification gate at the graph-edge
-    # level too, independent of supervisor_node's own check. Per PRD §9.4,
-    # deterministic graph conditions must enforce security, not just the
-    # LLM-driven node logic upstream.
-    if agent in PROTECTED_AGENTS and not state.get("customer_verified", False):
-        return "authentication"
-
-    if agent == "response":
-        return "response"
-
-    if agent == "escalation":
-        return "escalation"
-
-    if agent == "human_approval":
-        return "human_approval"
-
-    if agent == "action_executor":
-        return "action_executor"
-
-    if agent == "compliance":
-        return "compliance"
-
-    valid_agents = ["authentication", "faq", "account", "transaction", "card"]
-    if agent in valid_agents:
-        return agent
-
-    return END
-
-
 DETERMINISTIC_HANDOFF_TARGETS = {
     "compliance",
     "human_approval",
@@ -58,6 +23,27 @@ DETERMINISTIC_HANDOFF_TARGETS = {
     "escalation",
     "response",
 }
+
+# Every node name route_from_supervisor is allowed to dispatch to.
+ROUTABLE_FROM_SUPERVISOR = PROTECTED_AGENTS | DETERMINISTIC_HANDOFF_TARGETS | {"authentication", "faq"}
+
+
+def route_from_supervisor(state: BankingSupportState) -> str:
+    """Route to the node the supervisor already decided on.
+
+    supervisor_node has already applied the deterministic auth gate (see
+    enforce_auth_gate in agents/supervisor.py) before returning
+    active_agent, so this function only needs to dispatch to the matching
+    node name -- it must NOT re-check verification itself. Because this is
+    the sole conditional edge run immediately after supervisor_node (there
+    is exactly one add_conditional_edges("supervisor", ...) call below), any
+    state it sees was just produced by that node, so a second verification
+    check here could never actually fire; it would only be dead code.
+    """
+    agent = state.get("active_agent")
+    if agent in ROUTABLE_FROM_SUPERVISOR:
+        return agent
+    return END
 
 
 def route_after_agent(state: BankingSupportState) -> str:

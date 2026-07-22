@@ -1,9 +1,14 @@
 """Approval service interacting with the LangGraph API."""
 
+from datetime import datetime, timezone
+
 import httpx
+from sqlmodel import Session, select
+
 from src.config import settings
+from src.database import engine
+from src.models.approval_request import ApprovalRequest
 from src.schemas.approval import ApprovalDecision
-from src.services.audit_service import log_audit_event
 
 
 class LangGraphClient:
@@ -62,11 +67,12 @@ def get_or_create_pending_approval(
     node function re-runs from the top on resume, so any code before the
     `interrupt()` call executes again. Without this check, resuming a
     thread would insert a second, duplicate "pending" row every time.
-    """
-    from sqlmodel import Session, select
-    from src.database import engine
-    from src.models.approval_request import ApprovalRequest
 
+    Returns (record, created) so callers can tell a fresh interrupt from a
+    replayed resume -- e.g. to only log an "approval_requested" audit event
+    once instead of duplicating it on every resume, which has the exact
+    same replay hazard this function was written to avoid for the DB row.
+    """
     with Session(engine) as session:
         existing = session.exec(
             select(ApprovalRequest).where(
@@ -75,7 +81,7 @@ def get_or_create_pending_approval(
             )
         ).first()
         if existing:
-            return existing
+            return existing, False
 
         record = ApprovalRequest(
             thread_id=thread_id,
@@ -89,7 +95,7 @@ def get_or_create_pending_approval(
         session.add(record)
         session.commit()
         session.refresh(record)
-        return record
+        return record, True
 
 
 async def get_pending_approvals() -> list[dict]:
@@ -101,14 +107,7 @@ async def get_pending_approvals() -> list[dict]:
     Since we can't easily query all suspended threads without LangGraph Studio's internal APIs,
     we'll provide a mock or require the thread_id.
     """
-    # Placeholder for prototype: the real app would persist approval requests in the ApprovalRequest DB table
-    # Let's query the DB for pending ones!
-    from sqlmodel import Session, select
-    from src.database import engine
-    from src.models.approval_request import ApprovalRequest
-    
     with Session(engine) as session:
-        # Get from DB instead of LangGraph directly
         statement = select(ApprovalRequest).where(ApprovalRequest.status == "pending")
         results = session.exec(statement).all()
         
@@ -131,11 +130,6 @@ async def submit_approval_decision(thread_id: str, decision: ApprovalDecision, r
     """Submit a decision and resume the LangGraph thread."""
     
     # 1. Update the DB record
-    from sqlmodel import Session, select
-    from src.database import engine
-    from src.models.approval_request import ApprovalRequest
-    from datetime import datetime, timezone
-    
     with Session(engine) as session:
         statement = select(ApprovalRequest).where(
             ApprovalRequest.thread_id == thread_id,

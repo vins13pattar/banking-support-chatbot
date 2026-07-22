@@ -13,20 +13,22 @@ class RoutingDecision(BaseModel):
         "account",
         "transaction",
         "card",
-        "compliance",
         "response",
         "escalation",
     ] = Field(
         ...,
-        description="The specialized agent or node to handle the user's request."
+        description=(
+            "The specialized agent or node to handle the user's request. "
+            "Note: 'compliance' is intentionally NOT selectable here. Compliance "
+            "(and human_approval / action_executor) are deterministic-handoff-only "
+            "nodes reached from transaction/card AFTER a propose_* tool sets "
+            "proposed_action -- never routed to directly. A request to dispute a "
+            "transaction goes to 'transaction', which owns the propose_dispute tool."
+        ),
     )
     reason: str = Field(
         ...,
         description="Explanation of why this agent was chosen."
-    )
-    requires_authentication: bool = Field(
-        ...,
-        description="True if the request requires the user to be authenticated first (e.g., account or transaction inquiries)."
     )
     confidence: float = Field(
         ...,

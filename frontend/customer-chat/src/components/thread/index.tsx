@@ -326,7 +326,7 @@ export function Thread() {
                 )}
               </div>
               <div className="absolute top-2 right-4 flex items-center">
-                <OpenGitHubRepo />
+                {/* <OpenGitHubRepo /> */}
               </div>
             </div>
           )}

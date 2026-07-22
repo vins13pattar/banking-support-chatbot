@@ -4,12 +4,15 @@ from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 
+from src.agents._shared import extract_proposed_action
 from src.config import settings
 from src.tools.card_tools import (
     get_customer_cards_tool,
     propose_block_card_tool,
     propose_replace_card_tool
 )
+
+PROPOSE_CARD_ACTION_TOOLS = {"propose_block_card", "propose_replace_card"}
 
 llm = ChatOpenAI(model=settings.llm_model, temperature=0)
 
@@ -44,25 +47,11 @@ async def card_node(state: dict) -> dict:
     
     original_message_count = len(state.get("messages", []))
     new_messages = result["messages"][original_message_count:]
-    
-    # Check if a proposed action was generated
-    proposed_action = state.get("proposed_action")
-    active_agent = None
-    
-    for message in reversed(result["messages"]):
-        if message.type == "tool" and message.name in ["propose_block_card", "propose_replace_card"]:
-            import json
-            try:
-                data = json.loads(message.content)
-                if "proposed_action" in data:
-                    proposed_action = data["proposed_action"]
-                    active_agent = "compliance" # Force route to compliance
-            except:
-                pass
-            break
-            
+
+    found = extract_proposed_action(result["messages"], PROPOSE_CARD_ACTION_TOOLS)
+
     return {
         "messages": new_messages,
-        "proposed_action": proposed_action,
-        "active_agent": active_agent
+        "proposed_action": found if found is not None else state.get("proposed_action"),
+        "active_agent": "compliance" if found is not None else None
     }

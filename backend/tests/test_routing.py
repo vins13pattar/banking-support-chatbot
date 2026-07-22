@@ -1,10 +1,35 @@
 """Tests for the routing logic and supervisor agent."""
 
+from typing import get_args
+
 import pytest
 from langchain_core.messages import HumanMessage
 
 from src.graphs.state import BankingSupportState
 from src.graphs.main_graph import route_from_supervisor, route_after_agent
+from src.schemas.routing import RoutingDecision
+
+
+def test_supervisor_cannot_route_to_deterministic_handoff_nodes():
+    """Regression: the supervisor LLM must NOT be able to route directly to
+    deterministic-handoff-only nodes.
+
+    compliance, human_approval, and action_executor are only ever entered
+    as deterministic handoffs (transaction/card -> compliance ->
+    human_approval -> action_executor) AFTER a propose_* tool has set
+    proposed_action. If "compliance" is a selectable RoutingDecision target,
+    the supervisor LLM routes a plain "raise a dispute" request straight to
+    compliance, which has no proposed_action yet, so it dead-ends with a
+    canned message and the dispute is never proposed or filed.
+    """
+    allowed = set(get_args(RoutingDecision.model_fields["target_agent"].annotation))
+    for handoff_only in ("compliance", "human_approval", "action_executor"):
+        assert handoff_only not in allowed, (
+            f"{handoff_only} must not be a supervisor-selectable route; "
+            "it is reachable only via a deterministic handoff."
+        )
+    # The transaction agent is what actually owns dispute requests.
+    assert "transaction" in allowed
 
 
 def _make_state(**overrides) -> BankingSupportState:

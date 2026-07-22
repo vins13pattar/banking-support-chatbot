@@ -28,19 +28,34 @@ Available Agents:
 - faq: General banking questions, policy inquiries, bank hours, rates.
 - authentication: Verification of customer identity (DOB, phone).
 - account: Account balances, account status, types of accounts.
-- transaction: Recent transactions, transaction search, declined transactions, disputing transactions, or creating support tickets for transactions.
+- transaction: Recent transactions, transaction search, declined transactions, disputing transactions (including "raise/file a dispute" requests), or creating support tickets for transactions.
 - card: Card management (blocking, unblocking, replacing). (Use 'card' for lost card).
-- compliance: Evaluates risk ONLY for ALREADY PROPOSED sensitive actions (like blocking a card, replacing a card, or executing a high-risk dispute). Do NOT route general user requests directly to compliance unless an action was already proposed.
 - response: Used ONLY when you want to respond directly without routing, e.g. casual greetings or thanking the user.
 
+Note: Sensitive actions (disputes, card blocks/replacements) are ALWAYS initiated by the domain agent above (transaction or card). That agent proposes the action and the system then routes it to compliance and human approval automatically. You must NEVER try to route to compliance, human approval, or execution yourself -- always send the user's request to the domain agent that owns it (a dispute request goes to 'transaction').
+
 Authentication Rules:
-- If the user is NOT authenticated (customer_verified=False) and asks about their specific account, transactions, or cards, you MUST route them to the 'authentication' agent. Set requires_authentication=True.
+- If the user is NOT authenticated (customer_verified=False) and asks about their specific account, transactions, or cards, you MUST route them to the 'authentication' agent.
 - General questions (FAQ) do NOT require authentication.
 
 Current Customer Status:
 - customer_verified: {customer_verified}
 - customer_id: {customer_id}
 """
+
+
+def enforce_auth_gate(target: str, customer_verified: bool) -> str:
+    """Deterministically override the routing target when it points at a
+    protected agent and the customer isn't verified yet.
+
+    This is the actual security boundary (see PROTECTED_AGENTS above): it
+    runs against the agent the LLM chose, not against the LLM's own opinion
+    of whether authentication is required, so a prompt-injected model can't
+    talk its way past it.
+    """
+    if target in PROTECTED_AGENTS and not customer_verified:
+        return "authentication"
+    return target
 
 
 async def supervisor_node(state: BankingSupportState, config: RunnableConfig | None = None) -> dict:
@@ -71,15 +86,8 @@ async def supervisor_node(state: BankingSupportState, config: RunnableConfig | N
     
     decision: RoutingDecision = await structured_llm.ainvoke(messages)
     
-    # Determine the target agent
-    target = decision.target_agent
+    target = enforce_auth_gate(decision.target_agent, state.get("customer_verified", False))
 
-    # Enforce authentication constraint deterministically, based on which
-    # agent was actually chosen rather than the LLM's self-reported
-    # requires_authentication flag (see PROTECTED_AGENTS comment above).
-    if target in PROTECTED_AGENTS and not state.get("customer_verified", False):
-        target = "authentication"
-        
     return {
         "active_agent": target,
         "intent": target, # loosely using intent as active agent for now
