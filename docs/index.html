@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Banking Support Chatbot: A Multi-Agent LangGraph System</title>
+  <meta name="description" content="A multi-agent banking support chatbot built with LangGraph, LangChain, FastAPI, and React. Routes, verifies, and executes banking requests with deterministic human-in-the-loop approval." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><circle cx=%2212%22 cy=%2212%22 r=%2211%22 fill=%22%232563eb%22/><circle cx=%228%22 cy=%229%22 r=%221.6%22 fill=%22white%22/><circle cx=%2216%22 cy=%229%22 r=%221.6%22 fill=%22white%22/><circle cx=%2212%22 cy=%2216%22 r=%221.6%22 fill=%22white%22/><path d=%22M8 9L16 9M8 9L12 16M16 9L12 16%22 stroke=%22white%22 stroke-width=%221.2%22/></svg>" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <script>
+    (function () {
+      var saved = localStorage.getItem("theme");
+      if (saved) document.documentElement.setAttribute("data-theme", saved);
+    })();
+  </script>
+</head>
+<body>
+
+  <a class="sr-only" href="#main" style="position:absolute;left:-9999px;">Skip to content</a>
+
+  <header class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="#top">
+        <svg class="brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="11" fill="var(--accent)" />
+          <circle cx="8" cy="9" r="1.6" fill="var(--accent-contrast)" />
+          <circle cx="16" cy="9" r="1.6" fill="var(--accent-contrast)" />
+          <circle cx="12" cy="16" r="1.6" fill="var(--accent-contrast)" />
+          <path d="M8 9L16 9M8 9L12 16M16 9L12 16" stroke="var(--accent-contrast)" stroke-width="1.1" />
+        </svg>
+        Banking Support Chatbot
+      </a>
+      <nav aria-label="Primary">
+        <ul class="nav-links">
+          <li><a href="#architecture">Architecture</a></li>
+          <li><a href="#agents">Agents</a></li>
+          <li><a href="#security">Security</a></li>
+          <li><a href="#start">Get started</a></li>
+        </ul>
+      </nav>
+      <div class="nav-actions">
+        <button class="icon-btn" id="theme-toggle" type="button" aria-label="Toggle dark mode">
+          <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+          <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        </button>
+        <a class="icon-btn" href="https://github.com/vins13pattar/banking-support-chatbot" target="_blank" rel="noopener" aria-label="View source on GitHub">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.57.1.78-.25.78-.55v-2.15c-3.2.7-3.87-1.36-3.87-1.36-.53-1.33-1.29-1.68-1.29-1.68-1.05-.72.08-.7.08-.7 1.17.08 1.78 1.2 1.78 1.2 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.23-1.28-5.23-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.18 1.18a11.05 11.05 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.23 2.75.11 3.04.74.8 1.19 1.83 1.19 3.09 0 4.42-2.69 5.4-5.25 5.68.41.36.78 1.06.78 2.14v3.17c0 .3.21.66.79.55A10.51 10.51 0 0 0 23.5 12c0-6.35-5.15-11.5-11.5-11.5Z"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- Hero -->
+    <section class="hero" id="top">
+      <div class="container hero-inner">
+        <h1>Banking support that always asks before it acts.</h1>
+        <p class="lede">A multi-agent LangGraph system that routes, verifies, and executes banking requests, pausing for human and customer approval on anything sensitive.</p>
+        <div class="hero-ctas">
+          <a class="btn btn-primary" href="https://github.com/vins13pattar/banking-support-chatbot" target="_blank" rel="noopener">View on GitHub</a>
+          <a class="btn btn-secondary" href="#architecture">See the architecture</a>
+        </div>
+      </div>
+
+      <div class="container hero-diagram">
+        <svg viewBox="0 0 900 220" style="width:100%; height:auto;" role="img" aria-labelledby="hero-diagram-title">
+          <title id="hero-diagram-title">Diagram of the request flow: Customer through Supervisor, specialist agents, Customer Consent, Compliance, Human Approval, to Action Executor.</title>
+          <g fill="none" stroke="var(--border-strong)" stroke-width="1.4">
+            <path d="M85 110 H190" />
+            <path d="M270 110 H360" />
+            <path d="M440 110 C 470 110, 470 60, 500 60" />
+            <path d="M440 110 C 470 110, 470 160, 500 160" />
+            <path d="M580 60 C 610 60, 610 110, 640 110" />
+            <path d="M580 160 C 610 160, 610 110, 640 110" />
+            <path d="M720 110 H 815" />
+          </g>
+          <g font-family="ui-monospace, monospace" font-size="11" fill="var(--text-muted)">
+            <g>
+              <circle cx="45" cy="110" r="38" fill="var(--bg-elevated)" stroke="var(--border-strong)" stroke-width="1.4" />
+              <text x="45" y="107" text-anchor="middle" fill="var(--text)" font-weight="600" font-family="var(--font-display)" font-size="12">Customer</text>
+              <text x="45" y="121" text-anchor="middle">chat</text>
+            </g>
+            <g>
+              <circle cx="230" cy="110" r="38" fill="var(--bg-elevated)" stroke="var(--border-strong)" stroke-width="1.4" />
+              <text x="230" y="107" text-anchor="middle" fill="var(--text)" font-weight="600" font-family="var(--font-display)" font-size="12">Supervisor</text>
+              <text x="230" y="121" text-anchor="middle">routes</text>
+            </g>
+            <g>
+              <circle cx="400" cy="110" r="38" fill="var(--bg-elevated)" stroke="var(--border-strong)" stroke-width="1.4" />
+              <text x="400" y="107" text-anchor="middle" fill="var(--text)" font-weight="600" font-family="var(--font-display)" font-size="11">Domain</text>
+              <text x="400" y="121" text-anchor="middle">agent</text>
+            </g>
+            <g>
+              <circle cx="540" cy="60" r="34" fill="var(--accent-wash)" stroke="var(--accent)" stroke-width="1.4" />
+              <text x="540" y="57" text-anchor="middle" fill="var(--accent)" font-weight="600" font-family="var(--font-display)" font-size="10.5">Customer</text>
+              <text x="540" y="70" text-anchor="middle" fill="var(--accent)">consent</text>
+            </g>
+            <g>
+              <circle cx="540" cy="160" r="34" fill="var(--bg-elevated)" stroke="var(--border-strong)" stroke-width="1.4" />
+              <text x="540" y="163" text-anchor="middle" fill="var(--text)" font-weight="600" font-family="var(--font-display)" font-size="11">Compliance</text>
+            </g>
+            <g>
+              <circle cx="680" cy="110" r="38" fill="var(--accent-wash)" stroke="var(--accent)" stroke-width="1.4" />
+              <text x="680" y="107" text-anchor="middle" fill="var(--accent)" font-weight="600" font-family="var(--font-display)" font-size="11">Human</text>
+              <text x="680" y="121" text-anchor="middle" fill="var(--accent)">approval</text>
+            </g>
+            <g>
+              <circle cx="855" cy="110" r="38" fill="var(--bg-elevated)" stroke="var(--border-strong)" stroke-width="1.4" />
+              <text x="855" y="107" text-anchor="middle" fill="var(--text)" font-weight="600" font-family="var(--font-display)" font-size="10.5">Action</text>
+              <text x="855" y="121" text-anchor="middle">executor</text>
+            </g>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <!-- Architecture -->
+    <section id="architecture">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">System</span>
+          <h2>Five services, one system.</h2>
+          <p>Each part has one job. Together they route a conversation, hold it in state, and let a human step in before anything sensitive happens.</p>
+        </div>
+
+        <div class="bento">
+          <div class="bento-card span-3">
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><circle cx="7" cy="7" r=".6" fill="currentColor" stroke="none"/><circle cx="7" cy="17" r=".6" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <h3>LangGraph Agent Server</h3>
+            <p>Runs the multi-agent graph: routing, tool calls, and durable interrupts backed by Postgres checkpoints.</p>
+          </div>
+          <div class="bento-card span-3">
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V7a2 2 0 0 1 2-2h6l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/></svg>
+            </div>
+            <h3>FastAPI Backend</h3>
+            <p>Custom endpoints behind the Admin Dashboard: pending approvals, support tickets, and the audit trail.</p>
+          </div>
+          <div class="bento-card span-2">
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            </div>
+            <h3>Admin Dashboard</h3>
+            <p>React portal where a reviewer approves sensitive actions and inspects support tickets.</p>
+          </div>
+          <div class="bento-card span-2">
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>
+            </div>
+            <h3>Customer Chat UI</h3>
+            <p>The customer-facing chat, including native consent cards for anything that needs sign-off.</p>
+          </div>
+          <div class="bento-card span-2">
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6"/></svg>
+            </div>
+            <h3>PostgreSQL</h3>
+            <p>Durable storage for conversation checkpoints, customer records, tickets, approvals, and audit events.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Agents / pipeline -->
+    <section id="agents">
+      <div class="container">
+        <div class="section-head center">
+          <h2>One request, many specialists.</h2>
+          <p>The Supervisor reads the request and hands it to exactly one specialist. A sensitive action then clears two more gates before it ever executes.</p>
+        </div>
+
+        <div class="pipeline">
+          <div class="pipeline-step">
+            <div class="pipeline-node">1</div>
+            <div class="pipeline-body">
+              <h3>Supervisor</h3>
+              <p>Classifies the request and routes it to the right specialist, never directly to a gated node.</p>
+            </div>
+          </div>
+          <div class="pipeline-step">
+            <div class="pipeline-node">2</div>
+            <div class="pipeline-body">
+              <h3>Authentication</h3>
+              <p>Verifies the customer's identity in code, before any account, transaction, or card agent can run.</p>
+            </div>
+          </div>
+          <div class="pipeline-step">
+            <div class="pipeline-node">3</div>
+            <div class="pipeline-body">
+              <h3>Account, Transaction, Card, and FAQ agents</h3>
+              <p>Domain agents handle the actual request and can propose a sensitive action, never execute one.</p>
+            </div>
+          </div>
+          <div class="pipeline-step is-gate">
+            <div class="pipeline-node">4</div>
+            <div class="pipeline-body">
+              <h3>Customer Consent <span class="gate-badge">Gate</span></h3>
+              <p>Interrupts the conversation so the customer explicitly approves or rejects the proposed action.</p>
+            </div>
+          </div>
+          <div class="pipeline-step">
+            <div class="pipeline-node">5</div>
+            <div class="pipeline-body">
+              <h3>Compliance</h3>
+              <p>Scores the risk of the approved action and recommends approve, reject, or escalate to a human.</p>
+            </div>
+          </div>
+          <div class="pipeline-step is-gate">
+            <div class="pipeline-node">6</div>
+            <div class="pipeline-body">
+              <h3>Human Approval <span class="gate-badge">Gate</span></h3>
+              <p>Interrupts again for an admin reviewer in the dashboard, with the decision written to an audit log.</p>
+            </div>
+          </div>
+          <div class="pipeline-step">
+            <div class="pipeline-node">7</div>
+            <div class="pipeline-body">
+              <h3>Action Executor</h3>
+              <p>Only now does the action actually run: a dispute gets filed, or a card gets blocked or replaced.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Security -->
+    <section id="security">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">Safety</span>
+          <h2>Two approvals, one audit trail.</h2>
+        </div>
+
+        <div class="security-grid">
+          <p style="color:var(--text-muted); font-size:1.02rem; max-width:48ch;">
+            Every dispute, card block, or card replacement is a proposal, not an action. It only proceeds after clearing gates enforced deterministically in the graph, never left to a model's self-report of what it thinks is safe.
+          </p>
+
+          <ul class="checklist">
+            <li>
+              <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg></span>
+              <div><strong>Auth gate enforced in code</strong><span>Runs against the agent actually chosen, not the LLM's self-reported verification flag.</span></div>
+            </li>
+            <li>
+              <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg></span>
+              <div><strong>Customer consent required</strong><span>The customer must explicitly approve before Compliance ever sees the proposed action.</span></div>
+            </li>
+            <li>
+              <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg></span>
+              <div><strong>Risk-scored by Compliance</strong><span>Assesses the request and can escalate straight to a human agent instead of routing for approval.</span></div>
+            </li>
+            <li>
+              <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg></span>
+              <div><strong>Every decision is logged</strong><span>Approved, rejected, or escalated: each outcome is written to an immutable audit event.</span></div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Showcase -->
+    <section id="showcase">
+      <div class="container">
+        <div class="section-head center">
+          <h2>What it looks like.</h2>
+          <p>Screenshots from the running system: the customer's consent prompt and the admin reviewer's queue.</p>
+        </div>
+
+        <div class="showcase">
+          <figure class="showcase-figure">
+            <div class="figure-frame">
+              <img src="assets/images/consent-card.png" alt="Customer chat showing a native consent card for a proposed dispute, with Approve and Reject controls." loading="lazy" />
+            </div>
+            <figcaption>Consent required before Compliance is notified.</figcaption>
+          </figure>
+          <figure class="showcase-figure">
+            <div class="figure-frame">
+              <img src="assets/images/admin-approval.png" alt="Admin dashboard pending approval card, showing a dispute awaiting human review with risk level and payload." loading="lazy" />
+            </div>
+            <figcaption>Pending approvals queue.</figcaption>
+          </figure>
+          <figure class="showcase-figure">
+            <div class="figure-frame">
+              <img src="assets/images/ticket-detail.png" alt="Admin dashboard support ticket detail panel showing full ticket record." loading="lazy" />
+            </div>
+            <figcaption>Full ticket record on click.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- Getting started -->
+    <section id="start">
+      <div class="container">
+        <div class="section-head">
+          <h2>Run it locally.</h2>
+          <p>Docker Compose brings up Postgres, Redis, the LangGraph server, FastAPI, and both frontends together.</p>
+        </div>
+
+        <div class="code-block">
+<code><span class="cmt"># clone and configure</span>
+git clone https://github.com/vins13pattar/banking-support-chatbot
+<span class="acc">cd</span> banking-support-chatbot
+cp .env.example .env  <span class="cmt"># add OPENAI_API_KEY + LANGSMITH_API_KEY</span>
+
+<span class="cmt"># set up, seed, and start the full stack</span>
+make setup
+make seed
+make start</code>
+        </div>
+
+        <div class="getting-started-links">
+          <a href="https://github.com/vins13pattar/banking-support-chatbot/blob/main/README.md" target="_blank" rel="noopener">README →</a>
+          <a href="https://github.com/vins13pattar/banking-support-chatbot/blob/main/PRD.md" target="_blank" rel="noopener">Product Requirements Document →</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <p>Banking Support Chatbot: a multi-agent system built on LangGraph, exploring deterministic HITL control for sensitive banking actions. Runs entirely on mock data.</p>
+      <ul class="footer-links">
+        <li><a href="https://github.com/vins13pattar/banking-support-chatbot" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="#top">Back to top</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var toggle = document.getElementById("theme-toggle");
+      var iconDark = document.getElementById("theme-icon-dark");
+      var iconLight = document.getElementById("theme-icon-light");
+
+      function currentIsDark() {
+        var attr = root.getAttribute("data-theme");
+        if (attr) return attr === "dark";
+        return window.matchMedia("(prefers-color-scheme: dark)").matches;
+      }
+
+      function syncIcon() {
+        var dark = currentIsDark();
+        iconDark.style.display = dark ? "none" : "block";
+        iconLight.style.display = dark ? "block" : "none";
+      }
+
+      toggle.addEventListener("click", function () {
+        var next = currentIsDark() ? "light" : "dark";
+        root.setAttribute("data-theme", next);
+        localStorage.setItem("theme", next);
+        syncIcon();
+      });
+
+      syncIcon();
+    })();
+  </script>
+</body>
+</html>
