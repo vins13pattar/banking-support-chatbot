@@ -25,16 +25,26 @@ class LangGraphClient:
         return response.json()
 
     async def resume_thread(self, thread_id: str, decision: ApprovalDecision) -> dict:
-        """Resume a suspended thread with a decision payload."""
-        # LangGraph resume takes the payload directly
+        """Resume a suspended thread with a decision payload.
+
+        Both fields below are required by the server's RunCreateStateful
+        schema: "assistant_id" (missing entirely before) and the lowercase
+        "command" key (previously sent as "Command", which the schema does
+        not recognize -- so the resume payload was silently ignored and the
+        request failed schema validation with a 422 either way). Without
+        this, every approve/reject decision updated the ApprovalRequest DB
+        row to "approved"/"rejected" but never actually resumed the
+        interrupted graph, leaving the customer's thread stuck.
+        """
         payload = {
-            "Command": {
+            "assistant_id": settings.langgraph_assistant_id,
+            "command": {
                 "resume": decision.model_dump()
             }
         }
-        
+
         response = await self.client.post(
-            f"/threads/{thread_id}/runs/wait", 
+            f"/threads/{thread_id}/runs/wait",
             json=payload
         )
         response.raise_for_status()
@@ -127,30 +137,40 @@ async def get_pending_approvals() -> list[dict]:
 
 
 async def submit_approval_decision(thread_id: str, decision: ApprovalDecision, reviewer: str = "admin") -> dict:
-    """Submit a decision and resume the LangGraph thread."""
-    
-    # 1. Update the DB record
+    """Submit a decision and resume the LangGraph thread.
+
+    Resume the graph BEFORE writing the decision to the DB, not after. If
+    the DB write happened first and resume_thread then failed (as it did
+    until the assistant_id/command payload bug above was fixed), the record
+    was left permanently "approved"/"rejected" -- and therefore no longer
+    "pending" -- while the actual interrupted graph never advanced and the
+    customer's thread stayed stuck. That left no way to retry from the UI,
+    since the pending-approvals list only shows status="pending" rows. By
+    resuming first, a failure leaves the row untouched at "pending" so the
+    admin can simply retry the decision.
+    """
+    try:
+        result = await lg_client.resume_thread(thread_id, decision)
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to resume thread: {str(e)}"}
+
+    # Resume succeeded; now record the decision.
     with Session(engine) as session:
         statement = select(ApprovalRequest).where(
             ApprovalRequest.thread_id == thread_id,
             ApprovalRequest.status == "pending"
         )
         req = session.exec(statement).first()
-        
+
         if req:
             req.status = "approved" if decision.approved else "rejected"
             if decision.approved and decision.modified_action:
                 req.status = "modified"
-                
+
             req.reviewer = reviewer
             req.reviewer_comment = decision.reviewer_comment
             req.reviewed_at = datetime.now(timezone.utc)
             session.add(req)
             session.commit()
-    
-    # 2. Resume the LangGraph thread
-    try:
-        result = await lg_client.resume_thread(thread_id, decision)
-        return {"status": "success", "message": "Thread resumed successfully.", "langgraph_result": result}
-    except Exception as e:
-        return {"status": "error", "message": f"Failed to resume thread: {str(e)}"}
+
+    return {"status": "success", "message": "Thread resumed successfully.", "langgraph_result": result}

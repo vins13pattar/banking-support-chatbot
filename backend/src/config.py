@@ -24,6 +24,8 @@ class Settings(BaseSettings):
 
     # --- Agent Server ---
     langgraph_api_url: str = "http://localhost:2024"
+    # Must match the graph key registered in backend/langgraph.json.
+    langgraph_assistant_id: str = "banking_support"
 
     # --- Custom API ---
     api_host: str = "0.0.0.0"

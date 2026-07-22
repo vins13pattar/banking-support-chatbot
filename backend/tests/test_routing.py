@@ -14,16 +14,19 @@ def test_supervisor_cannot_route_to_deterministic_handoff_nodes():
     """Regression: the supervisor LLM must NOT be able to route directly to
     deterministic-handoff-only nodes.
 
-    compliance, human_approval, and action_executor are only ever entered
-    as deterministic handoffs (transaction/card -> compliance ->
-    human_approval -> action_executor) AFTER a propose_* tool has set
-    proposed_action. If "compliance" is a selectable RoutingDecision target,
-    the supervisor LLM routes a plain "raise a dispute" request straight to
-    compliance, which has no proposed_action yet, so it dead-ends with a
-    canned message and the dispute is never proposed or filed.
+    customer_consent, compliance, human_approval, and action_executor are
+    only ever entered as deterministic handoffs (transaction/card ->
+    customer_consent -> compliance -> human_approval -> action_executor)
+    AFTER a propose_* tool has set proposed_action. If "compliance" is a
+    selectable RoutingDecision target, the supervisor LLM routes a plain
+    "raise a dispute" request straight to compliance, which has no
+    proposed_action yet, so it dead-ends with a canned message and the
+    dispute is never proposed or filed. Same reasoning applies to
+    customer_consent: it expects a proposed_action to build its consent
+    request from.
     """
     allowed = set(get_args(RoutingDecision.model_fields["target_agent"].annotation))
-    for handoff_only in ("compliance", "human_approval", "action_executor"):
+    for handoff_only in ("customer_consent", "compliance", "human_approval", "action_executor"):
         assert handoff_only not in allowed, (
             f"{handoff_only} must not be a supervisor-selectable route; "
             "it is reachable only via a deterministic handoff."
@@ -136,6 +139,7 @@ def test_route_from_supervisor_response():
 @pytest.mark.parametrize(
     "next_agent,expected",
     [
+        ("customer_consent", "customer_consent"),
         ("compliance", "compliance"),
         ("human_approval", "human_approval"),
         ("action_executor", "action_executor"),

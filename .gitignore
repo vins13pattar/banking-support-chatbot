@@ -44,3 +44,6 @@ backend/migrations/versions/*.pyc
 # LangGraph
 .langgraph/
 backend/.langgraph_api/
+
+# Playwright MCP browser-test artifacts
+.playwright-mcp/

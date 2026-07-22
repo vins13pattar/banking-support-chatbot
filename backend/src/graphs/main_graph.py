@@ -9,6 +9,7 @@ from src.agents.faq import faq_node
 from src.agents.account import account_node
 from src.agents.transaction import transaction_node
 from src.agents.card import card_node
+from src.agents.customer_consent import customer_consent_node
 from src.agents.compliance import compliance_node
 from src.agents.human_approval import human_approval_node
 from src.agents.action_executor import action_executor_node
@@ -17,6 +18,7 @@ from src.agents.escalation import escalation_node
 
 
 DETERMINISTIC_HANDOFF_TARGETS = {
+    "customer_consent",
     "compliance",
     "human_approval",
     "action_executor",
@@ -92,6 +94,7 @@ workflow.add_node("faq", faq_node)
 workflow.add_node("account", account_node)
 workflow.add_node("transaction", transaction_node)
 workflow.add_node("card", card_node)
+workflow.add_node("customer_consent", customer_consent_node)
 workflow.add_node("compliance", compliance_node)
 workflow.add_node("human_approval", human_approval_node)
 workflow.add_node("action_executor", action_executor_node)
@@ -130,6 +133,7 @@ workflow.add_conditional_edges("transaction", route_after_agent)
 workflow.add_conditional_edges("card", route_after_agent)
 
 # These route directly to their deterministic next node, otherwise END
+workflow.add_conditional_edges("customer_consent", route_after_agent)
 workflow.add_conditional_edges("compliance", route_after_agent)
 workflow.add_conditional_edges("human_approval", route_after_agent)
 workflow.add_conditional_edges("action_executor", route_after_agent)

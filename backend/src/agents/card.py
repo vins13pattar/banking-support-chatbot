@@ -25,7 +25,7 @@ Important Rules for Sensitive Actions:
 Blocking or replacing a card are SENSITIVE actions.
 1. When a user asks to block or replace a card, use the 'propose_block_card' or 'propose_replace_card' tool.
 2. These tools will return a 'proposed_action' dictionary.
-3. You CANNOT execute the action yourself. Once you receive the 'proposed_action', you MUST stop and let the system route it to the Compliance Agent. Do not tell the user it is done, tell them it is being reviewed.
+3. You CANNOT execute the action yourself. Once you receive the 'proposed_action', you MUST stop and let the system ask the customer for consent before it goes to the Compliance Agent. Do not tell the user it is done, tell them it needs their confirmation first.
 """
 
 def get_card_agent(customer_id: str | None):
@@ -53,5 +53,6 @@ async def card_node(state: dict) -> dict:
     return {
         "messages": new_messages,
         "proposed_action": found if found is not None else state.get("proposed_action"),
-        "active_agent": "compliance" if found is not None else None
+        # Ask the customer for consent before compliance/admin ever sees this.
+        "active_agent": "customer_consent" if found is not None else None
     }

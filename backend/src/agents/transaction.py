@@ -27,7 +27,7 @@ Important Rules for Disputes:
 Creating a transaction dispute is a SENSITIVE, high-risk action that requires compliance review and human approval.
 1. When a customer wants to dispute a transaction, first confirm which transaction (using get_transaction_details or search_transactions) and collect their reason.
 2. Then use the 'propose_dispute' tool. You CANNOT create the dispute ticket yourself.
-3. Once you receive the proposed action, you MUST stop and let the system route it to the Compliance Agent. Tell the customer the dispute is being reviewed, NOT that it has been filed.
+3. Once you receive the proposed action, you MUST stop and let the system ask the customer for consent before it goes to the Compliance Agent. Tell the customer their confirmation is needed, NOT that it has been filed.
 
 Other Rules:
 1. If you use create_support_ticket, you must provide the customer_id and thread_id. customer_id is: {customer_id}. The current thread_id is: {thread_id}
@@ -56,12 +56,13 @@ async def transaction_node(state: dict) -> dict:
     original_message_count = len(state.get("messages", []))
     new_messages = result["messages"][original_message_count:]
 
-    # If a dispute was proposed, hand off to the Compliance Agent instead of
-    # ending the turn (mirrors card_node's handling of its propose_* tools).
+    # If a dispute was proposed, hand off to the Customer Consent node instead
+    # of ending the turn (mirrors card_node's handling of its propose_* tools).
     found = extract_proposed_action(result["messages"], PROPOSE_DISPUTE_TOOLS)
 
     return {
         "messages": new_messages,
         "proposed_action": found if found is not None else state.get("proposed_action"),
-        "active_agent": "compliance" if found is not None else None
+        # Ask the customer for consent before compliance/admin ever sees this.
+        "active_agent": "customer_consent" if found is not None else None
     }
