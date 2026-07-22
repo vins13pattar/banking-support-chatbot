@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import TicketDetailModal from '../components/TicketDetailModal';
 
 const API_URL = import.meta.env.VITE_SUPPORT_API_URL || 'http://localhost:8000/api/v1';
 
@@ -10,12 +11,15 @@ interface Ticket {
   description: string;
   priority: string;
   status: string;
+  assigned_to: string;
   created_at: string;
+  updated_at: string;
 }
 
 const Tickets = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
   useEffect(() => {
     const fetchTickets = async () => {
@@ -63,7 +67,7 @@ const Tickets = () => {
                 </tr>
               ) : (
                 tickets.map(t => (
-                  <tr key={t.id}>
+                  <tr key={t.id} onClick={() => setSelectedTicket(t)} style={{ cursor: 'pointer' }}>
                     <td>
                       <span className={`badge ${t.status === 'open' ? 'warning' : 'low'}`}>
                         {t.status}
@@ -86,6 +90,10 @@ const Tickets = () => {
           </table>
         )}
       </div>
+
+      {selectedTicket && (
+        <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />
+      )}
     </div>
   );
 };
