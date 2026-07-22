@@ -80,9 +80,85 @@ services:
     networks:
       - chatbot-network
 
+  # --- LangGraph self-hosted server: Postgres-backed thread/checkpoint persistence ---
+  # Replaces `langgraph dev` (ephemeral in-memory pickle store) so conversation
+  # threads persist in Postgres via the server's built-in PostgresSaver.
+  langgraph-redis:
+    image: redis:6
+    container_name: banking-chatbot-langgraph-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 1s
+      retries: 5
+    networks:
+      - chatbot-network
+
+  # Dedicated Postgres for langgraph threads/checkpoints/store. Uses the pgvector
+  # image (the server's store schema requires the `vector` extension); kept
+  # separate from the app's `postgres` DB so business data and agent runtime
+  # state don't share a schema. Exposed on host 5433 to avoid clashing with 5432.
+  langgraph-postgres:
+    image: pgvector/pgvector:pg16
+    container_name: banking-chatbot-langgraph-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    command: ["postgres", "-c", "shared_preload_libraries=vector"]
+    ports:
+      - "5433:5432"
+    volumes:
+      - langgraph-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chatbot-network
+
+  langgraph-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.langgraph
+    container_name: banking-chatbot-langgraph-api
+    restart: unless-stopped
+    ports:
+      - "2024:8000"
+    env_file:
+      - .env
+    environment:
+      # Thread/checkpoint persistence — the langgraph server reads these directly.
+      REDIS_URI: redis://langgraph-redis:6379
+      POSTGRES_URI: postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable
+      # The graph's own domain DB (customers/accounts/transactions). Reach the app
+      # Postgres by its compose service name — `localhost` would resolve to this
+      # container, not the host. Overrides DATABASE_URL from .env (which targets localhost).
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/banking_chatbot
+    depends_on:
+      langgraph-redis:
+        condition: service_healthy
+      langgraph-postgres:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python /api/healthcheck.py"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - chatbot-network
+
 
 volumes:
   postgres-data:
+    driver: local
+  langgraph-postgres-data:
     driver: local
 
 networks:

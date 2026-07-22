@@ -1,0 +1,23 @@
+# Python virtualenv (must never be baked into the image)
+.venv/
+venv/
+
+# Local langgraph dev in-memory store (pickle files)
+.langgraph_api/
+
+# Caches and bytecode
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Local env / secrets (env is injected at runtime, not built in)
+.env
+*.env
+
+# VCS / editor noise
+.git/
+.gitignore
+.idea/
+.vscode/
