@@ -2,7 +2,7 @@
 
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 from src.agents._shared import extract_proposed_action
 from src.config import settings
@@ -38,14 +38,14 @@ def get_transaction_agent(customer_id: str | None, thread_id: str):
         customer_id=customer_id or "UNKNOWN (Error: User must be authenticated)",
         thread_id=thread_id
     )
-    return create_react_agent(
+    return create_agent(
         model=llm,
         tools=[
             *make_transaction_read_tools(customer_id),
             propose_dispute_tool,
             create_support_ticket_tool
         ],
-        prompt=SystemMessage(content=prompt)
+        system_prompt=SystemMessage(content=prompt)
     )
 
 async def transaction_node(state: dict) -> dict:

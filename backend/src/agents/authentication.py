@@ -2,7 +2,7 @@
 
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 from src.config import settings
 from src.tools.customer_tools import verify_customer_tool
@@ -24,11 +24,11 @@ If verification is successful, politely inform the user that they are verified a
 If verification fails, inform the user and ask them to try again.
 """
 
-# Create the ReAct agent
-auth_agent = create_react_agent(
+# Create the agent
+auth_agent = create_agent(
     model=llm,
     tools=[verify_customer_tool],
-    prompt=SystemMessage(content=AUTH_PROMPT)
+    system_prompt=SystemMessage(content=AUTH_PROMPT)
 )
 
 async def authentication_node(state: dict) -> dict:

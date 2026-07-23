@@ -2,7 +2,7 @@
 
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 from src.config import settings
 from src.tools.knowledge_tools import search_banking_knowledge_tool, get_policy_document_tool
@@ -18,10 +18,10 @@ Do NOT make up information. If you cannot find the answer in the knowledge base,
 Be polite, concise, and helpful.
 """
 
-faq_agent = create_react_agent(
+faq_agent = create_agent(
     model=llm,
     tools=[search_banking_knowledge_tool, get_policy_document_tool],
-    prompt=SystemMessage(content=FAQ_PROMPT)
+    system_prompt=SystemMessage(content=FAQ_PROMPT)
 )
 
 async def faq_node(state: dict) -> dict:

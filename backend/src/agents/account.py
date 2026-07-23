@@ -2,7 +2,7 @@
 
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 from src.config import settings
 from src.tools.account_tools import make_account_tools
@@ -22,10 +22,10 @@ Important Rules:
 """
 
 def get_account_agent(customer_id: str | None):
-    return create_react_agent(
+    return create_agent(
         model=llm,
         tools=make_account_tools(customer_id),
-        prompt=SystemMessage(content=ACCOUNT_PROMPT)
+        system_prompt=SystemMessage(content=ACCOUNT_PROMPT)
     )
 
 async def account_node(state: dict) -> dict:

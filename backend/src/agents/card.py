@@ -2,7 +2,7 @@
 
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 from src.agents._shared import extract_proposed_action
 from src.config import settings
@@ -30,14 +30,14 @@ Blocking or replacing a card are SENSITIVE actions.
 
 def get_card_agent(customer_id: str | None):
     prompt = CARD_PROMPT.format(customer_id=customer_id or "UNKNOWN")
-    return create_react_agent(
+    return create_agent(
         model=llm,
         tools=[
             get_customer_cards_tool,
             propose_block_card_tool,
             propose_replace_card_tool
         ],
-        prompt=SystemMessage(content=prompt)
+        system_prompt=SystemMessage(content=prompt)
     )
 
 async def card_node(state: dict) -> dict:
